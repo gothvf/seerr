@@ -10,6 +10,12 @@ import { UserSettings } from '@server/entity/UserSettings';
 import cacheManager from '@server/lib/cache';
 import type { TitleRatings } from '@server/lib/parental/ages';
 import { getSettings } from '@server/lib/settings';
+import { checkUser } from '@server/middleware/auth';
+import authRoutes from '@server/routes/auth';
+import type { Express } from 'express';
+import express from 'express';
+import session from 'express-session';
+import request from 'supertest';
 
 export const ALLOWED: TitleRatings = { FR: ['TP'] };
 export const BLOCKED_18: TitleRatings = { FR: ['18'] };
@@ -88,4 +94,49 @@ export async function restrictUser(
   user.settings.parentalProfile = profile;
   await getRepository(User).save(user);
   return profile;
+}
+
+/** An app with sessions, checkUser, /auth and the error handler around the given routes. */
+export function createTestApp(mount: (app: Express) => void): Express {
+  const app = express();
+  app.use(express.json());
+  app.use(
+    session({ secret: 'test-secret', resave: false, saveUninitialized: false })
+  );
+  app.use(checkUser);
+  app.use('/auth', authRoutes);
+  mount(app);
+  app.use(
+    (
+      err: { status?: number; message?: string },
+      _req: express.Request,
+      res: express.Response,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      _next: express.NextFunction
+    ) => {
+      res
+        .status(err.status ?? 500)
+        .json({ status: err.status ?? 500, message: err.message });
+    }
+  );
+  return app;
+}
+
+/** Signs in with the seeded password; returns an agent that keeps the session. */
+export async function loginAs(app: Express, email: string) {
+  const settings = getSettings();
+  const prior = settings.main.localLogin;
+  settings.main.localLogin = true;
+  try {
+    const agent = request.agent(app);
+    const res = await agent
+      .post('/auth/local')
+      .send({ email, password: 'test1234' });
+    if (res.status !== 200) {
+      throw new Error(`login as ${email} failed: ${res.status}`);
+    }
+    return agent;
+  } finally {
+    settings.main.localLogin = prior;
+  }
 }

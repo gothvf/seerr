@@ -4,49 +4,27 @@ import { before, beforeEach, describe, it, mock } from 'node:test';
 import type { ParentalProfileResponse } from '@server/interfaces/api/parentalInterfaces';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
-import { checkUser, isAuthenticated } from '@server/middleware/auth';
-import authRoutes from '@server/routes/auth';
+import { isAuthenticated } from '@server/middleware/auth';
 import parentalProfileRoutes from '@server/routes/parentalProfile';
 import settingsRoutes from '@server/routes/settings';
 import userRoutes from '@server/routes/user';
 import { setupTestDb } from '@server/test/db';
-import { loadUser, resetParental } from '@server/test/parental';
+import {
+  createTestApp,
+  loadUser,
+  loginAs,
+  resetParental,
+} from '@server/test/parental';
 import type { Express } from 'express';
-import express from 'express';
-import session from 'express-session';
-import request from 'supertest';
 
 let app: Express;
 
-function createApp() {
-  const app = express();
-  app.use(express.json());
-  app.use(
-    session({ secret: 'test-secret', resave: false, saveUninitialized: false })
-  );
-  app.use(checkUser);
-  app.use('/auth', authRoutes);
-  app.use('/parentalProfile', isAuthenticated(), parentalProfileRoutes);
-  app.use('/settings', isAuthenticated(Permission.ADMIN), settingsRoutes);
-  app.use('/user', isAuthenticated(), userRoutes);
-  app.use(
-    (
-      err: { status?: number; message?: string },
-      _req: express.Request,
-      res: express.Response,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      _next: express.NextFunction
-    ) => {
-      res
-        .status(err.status ?? 500)
-        .json({ status: err.status ?? 500, message: err.message });
-    }
-  );
-  return app;
-}
-
 before(() => {
-  app = createApp();
+  app = createTestApp((app) => {
+    app.use('/parentalProfile', isAuthenticated(), parentalProfileRoutes);
+    app.use('/settings', isAuthenticated(Permission.ADMIN), settingsRoutes);
+    app.use('/user', isAuthenticated(), userRoutes);
+  });
   // Keep settings.json on disk untouched
   mock.method(getSettings(), 'save', async () => undefined);
 });
@@ -54,24 +32,8 @@ before(() => {
 setupTestDb();
 beforeEach(resetParental);
 
-async function loginAs(email: string) {
-  const settings = getSettings();
-  const prior = settings.main.localLogin;
-  settings.main.localLogin = true;
-  try {
-    const agent = request.agent(app);
-    const res = await agent
-      .post('/auth/local')
-      .send({ email, password: 'test1234' });
-    assert.equal(res.status, 200);
-    return agent;
-  } finally {
-    settings.main.localLogin = prior;
-  }
-}
-
-const admin = () => loginAs('admin@seerr.dev');
-const demo = () => loginAs('demo@seerr.dev');
+const admin = () => loginAs(app, 'admin@seerr.dev');
+const demo = () => loginAs(app, 'demo@seerr.dev');
 
 describe('/parentalProfile', () => {
   it('lets an admin create, list, update and delete profiles', async () => {
