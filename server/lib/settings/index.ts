@@ -129,6 +129,11 @@ export interface ProxySettings {
   bypassLocalAddresses: boolean;
 }
 
+export interface ParentalSettings {
+  // ISO 3166-1 codes in priority order; see server/lib/parental/ages.ts
+  countries: string[];
+}
+
 export interface MainSettings {
   apiKey: string;
   applicationTitle: string;
@@ -390,6 +395,7 @@ export interface AllSettings {
   jobs: Record<JobId, JobSettings>;
   network: NetworkSettings;
   metadataSettings: MetadataSettings;
+  parental: ParentalSettings;
   migrations: string[];
 }
 
@@ -636,6 +642,9 @@ class Settings {
         },
         apiRequestTimeout: 10000,
       },
+      parental: {
+        countries: ['US'],
+      },
       migrations: [],
     };
     if (initialSettings) {
@@ -770,6 +779,14 @@ class Settings {
 
   set network(data: NetworkSettings) {
     this.data.network = mergeSettings(this.data.network, data);
+  }
+
+  get parental(): ParentalSettings {
+    return this.data.parental;
+  }
+
+  set parental(data: ParentalSettings) {
+    this.data.parental = mergeSettings(this.data.parental, data);
   }
 
   get migrations(): string[] {

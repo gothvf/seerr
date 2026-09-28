@@ -5,9 +5,11 @@ import {
   Column,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import ParentalProfile from './ParentalProfile';
 import { User } from './User';
 
 export const ALL_NOTIFICATIONS = Object.values(Notification)
@@ -39,6 +41,14 @@ export class UserSettings {
   @OneToOne(() => User, (user) => user.settings, { onDelete: 'CASCADE' })
   @JoinColumn()
   public user: User;
+
+  // Restricts what this user sees; lives here because User.toJSON() drops settings
+  @ManyToOne(() => ParentalProfile, {
+    eager: true,
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  public parentalProfile?: ParentalProfile | null;
 
   @Column({ default: '' })
   public locale?: string;
