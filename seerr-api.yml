@@ -214,6 +214,11 @@ components:
           nullable: true
           description: 'Enable watchlist sync for TV'
           example: false
+        parentalProfileId:
+          type: number
+          nullable: true
+          description: Only returned to, and only changed by, a user with Manage Users editing another user.
+          example: 1
     MainSettings:
       type: object
       properties:
@@ -2105,6 +2110,40 @@ components:
           type: string
         native_name:
           type: string
+    ParentalProfile:
+      type: object
+      properties:
+        id:
+          type: number
+          example: 1
+        name:
+          type: string
+          example: 'Kids 10'
+        maxAge:
+          type: number
+          minimum: 0
+          maximum: 18
+          example: 10
+        allowUnrated:
+          type: boolean
+          example: false
+      required:
+        - name
+        - maxAge
+    ParentalSettings:
+      type: object
+      properties:
+        countries:
+          type: array
+          items:
+            type: string
+          example: ['FR', 'GB', 'DE', 'US']
+        supportedCountries:
+          type: array
+          readOnly: true
+          items:
+            type: string
+          example: ['US', 'CA', 'GB', 'FR', 'DE', 'ES', 'IT', 'NL', 'AU', 'BR']
     OverrideRule:
       type: object
       properties:
@@ -8301,6 +8340,129 @@ paths:
           description: User, media or request not found
         '500':
           description: Unable to evaluate override rules
+  /parentalProfile:
+    get:
+      summary: Get parental profiles
+      description: Returns every parental profile. Requires the `MANAGE_USERS` permission.
+      tags:
+        - users
+      responses:
+        '200':
+          description: Parental profiles returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParentalProfile'
+    post:
+      summary: Create a parental profile
+      description: Requires the `ADMIN` permission.
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParentalProfile'
+      responses:
+        '201':
+          description: Parental profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParentalProfile'
+        '400':
+          description: Invalid name or age
+        '409':
+          description: Name already used
+  /parentalProfile/{profileId}:
+    put:
+      summary: Update a parental profile
+      description: Requires the `ADMIN` permission.
+      tags:
+        - users
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParentalProfile'
+      responses:
+        '200':
+          description: Parental profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParentalProfile'
+        '404':
+          description: Unknown profile
+        '409':
+          description: Name already used
+    delete:
+      summary: Delete a parental profile
+      description: Requires the `ADMIN` permission. Refused while users have the profile.
+      tags:
+        - users
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: number
+      responses:
+        '204':
+          description: Parental profile deleted
+        '404':
+          description: Unknown profile
+        '409':
+          description: Profile assigned to users
+  /settings/parental:
+    get:
+      summary: Get the parental rating countries
+      description: The country list, in priority order, and the countries Seerr has rating tables for.
+      tags:
+        - settings
+      responses:
+        '200':
+          description: Parental settings returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParentalSettings'
+    post:
+      summary: Update the parental rating countries
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                countries:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - countries
+      responses:
+        '200':
+          description: Parental settings saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParentalSettings'
+        '400':
+          description: Empty, unknown or repeated countries
 
 security:
   - cookieAuth: []
