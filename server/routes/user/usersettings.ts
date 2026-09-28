@@ -4,6 +4,7 @@ import { ApiErrorCode } from '@server/constants/error';
 import { MediaServerType } from '@server/constants/server';
 import { UserType } from '@server/constants/user';
 import { getRepository } from '@server/datasource';
+import ParentalProfile from '@server/entity/ParentalProfile';
 import { User } from '@server/entity/User';
 import { UserSettings } from '@server/entity/UserSettings';
 import type {
@@ -27,6 +28,10 @@ import { Not } from 'typeorm';
 import { canMakePermissionsChange } from '.';
 
 const userSettingsRoutes = Router({ mergeParams: true });
+
+// Only someone managing users may see or change another user's parental profile
+const managesParentalProfile = (caller: User | undefined, user: User) =>
+  !!caller?.hasPermission(Permission.MANAGE_USERS) && caller.id !== user.id;
 
 userSettingsRoutes.get<{ id: string }, UserSettingsGeneralResponse>(
   '/main',
@@ -63,6 +68,9 @@ userSettingsRoutes.get<{ id: string }, UserSettingsGeneralResponse>(
         globalTvQuotaLimit: defaultQuotas.tv.quotaLimit,
         watchlistSyncMovies: user.settings?.watchlistSyncMovies,
         watchlistSyncTv: user.settings?.watchlistSyncTv,
+        ...(managesParentalProfile(req.user, user)
+          ? { parentalProfileId: user.settings?.parentalProfile?.id ?? null }
+          : {}),
       });
     } catch (e) {
       next({ status: 500, message: e.message });
@@ -136,6 +144,24 @@ userSettingsRoutes.post<
       user.settings.originalLanguage = req.body.originalLanguage;
       user.settings.watchlistSyncMovies = req.body.watchlistSyncMovies;
       user.settings.watchlistSyncTv = req.body.watchlistSyncTv;
+    }
+
+    if (
+      user.settings &&
+      req.body.parentalProfileId !== undefined &&
+      managesParentalProfile(req.user, user)
+    ) {
+      if (req.body.parentalProfileId === null) {
+        user.settings.parentalProfile = null;
+      } else {
+        const profile = await getRepository(ParentalProfile).findOne({
+          where: { id: Number(req.body.parentalProfileId) },
+        });
+        if (!profile) {
+          return next({ status: 400, message: 'Unknown parental profile.' });
+        }
+        user.settings.parentalProfile = profile;
+      }
     }
 
     const savedUser = await userRepository.save(user);

@@ -17,6 +17,7 @@ import { mapProductionCompany } from '@server/models/Movie';
 import { mapNetwork } from '@server/models/Tv';
 import { mapWatchProviderDetails } from '@server/models/common';
 import overrideRuleRoutes from '@server/routes/overrideRule';
+import parentalProfileRoutes from '@server/routes/parentalProfile';
 import settingsRoutes from '@server/routes/settings';
 import watchlistRoutes from '@server/routes/watchlist';
 import {
@@ -179,6 +180,7 @@ router.use('/issue', isAuthenticated(), issueRoutes);
 router.use('/issueComment', isAuthenticated(), issueCommentRoutes);
 router.use('/auth', authRoutes);
 router.use('/overrideRule', isAuthenticated(), overrideRuleRoutes);
+router.use('/parentalProfile', isAuthenticated(), parentalProfileRoutes);
 
 router.get('/regions', isAuthenticated(), async (req, res, next) => {
   const tmdb = new TheMovieDb();
