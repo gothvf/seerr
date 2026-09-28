@@ -15,6 +15,7 @@ import ErrorPage from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowDownOnSquareIcon } from '@heroicons/react/24/outline';
 import { ApiErrorCode } from '@server/constants/error';
+import type { ParentalProfileResponse } from '@server/interfaces/api/parentalInterfaces';
 import type { UserSettingsGeneralResponse } from '@server/interfaces/api/userSettingsInterfaces';
 import type { AvailableLocale } from '@server/types/languages';
 import axios from 'axios';
@@ -32,6 +33,10 @@ const messages = defineMessages(
     general: 'General',
     generalsettings: 'General Settings',
     displayName: 'Display Name',
+    parentalProfile: 'Parental Profile',
+    parentalProfileTip:
+      'Hides every title above this age from the user. They cannot see or change it.',
+    noParentalProfile: 'None (sees everything)',
     email: 'Email',
     save: 'Save Changes',
     saving: 'Saving…',
@@ -88,6 +93,12 @@ const UserGeneralSettings = () => {
   });
   const { user: currentUser, hasPermission: currentHasPermission } = useUser();
   const { currentSettings } = useSettings();
+  const managesParentalProfile =
+    currentHasPermission(Permission.MANAGE_USERS) &&
+    currentUser?.id !== user?.id;
+  const { data: parentalProfiles } = useSWR<ParentalProfileResponse[]>(
+    managesParentalProfile ? '/api/v1/parentalProfile' : null
+  );
   const {
     data,
     error,
@@ -161,6 +172,7 @@ const UserGeneralSettings = () => {
           tvQuotaDays: data?.tvQuotaDays,
           watchlistSyncMovies: data?.watchlistSyncMovies,
           watchlistSyncTv: data?.watchlistSyncTv,
+          parentalProfileId: data?.parentalProfileId ?? '',
         }}
         validationSchema={UserGeneralSettingsSchema}
         enableReinitialize
@@ -182,6 +194,11 @@ const UserGeneralSettings = () => {
               tvQuotaDays: tvQuotaEnabled ? values.tvQuotaDays : null,
               watchlistSyncMovies: values.watchlistSyncMovies,
               watchlistSyncTv: values.watchlistSyncTv,
+              parentalProfileId: managesParentalProfile
+                ? values.parentalProfileId === ''
+                  ? null
+                  : Number(values.parentalProfileId)
+                : undefined,
             });
 
             if (currentUser?.id === user?.id && setLocale) {
@@ -418,6 +435,34 @@ const UserGeneralSettings = () => {
                   </div>
                 </div>
               </div>
+              {managesParentalProfile && (
+                <div className="form-row">
+                  <label htmlFor="parentalProfileId" className="text-label">
+                    <span>{intl.formatMessage(messages.parentalProfile)}</span>
+                    <span className="label-tip">
+                      {intl.formatMessage(messages.parentalProfileTip)}
+                    </span>
+                  </label>
+                  <div className="form-input-area">
+                    <div className="form-input-field">
+                      <Field
+                        as="select"
+                        id="parentalProfileId"
+                        name="parentalProfileId"
+                      >
+                        <option value="">
+                          {intl.formatMessage(messages.noParentalProfile)}
+                        </option>
+                        {parentalProfiles?.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.name}
+                          </option>
+                        ))}
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              )}
               {currentHasPermission(Permission.MANAGE_USERS) &&
                 !hasPermission(Permission.MANAGE_USERS) && (
                   <>
