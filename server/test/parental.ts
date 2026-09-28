@@ -151,6 +151,7 @@ export const fakeMovieDetails = (id: number): TmdbMovieDetails =>
     title: `Movie ${id}`,
     original_title: `Movie ${id}`,
     overview: 'Overview',
+    release_date: '2020-01-01',
     genres: [],
     credits: { cast: [], crew: [] },
     videos: { results: [] },
