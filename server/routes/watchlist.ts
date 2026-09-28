@@ -3,6 +3,7 @@ import {
   NotFoundError,
   Watchlist,
 } from '@server/entity/Watchlist';
+import { ParentalRestrictionError } from '@server/lib/parental';
 import logger from '@server/logger';
 import { Router } from 'express';
 import { QueryFailedError } from 'typeorm';
@@ -43,6 +44,8 @@ watchlistRoutes.post<never, Watchlist, Watchlist>(
           return next({ status: 409, message: 'Something wrong' });
         case DuplicateWatchlistRequestError:
           return next({ status: 409, message: error.message });
+        case ParentalRestrictionError:
+          return next({ status: 403, message: error.message });
         default:
           return next({ status: 500, message: error.message });
       }

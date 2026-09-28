@@ -21,6 +21,11 @@ import type {
   MediaRequestBody,
   RequestResultsResponse,
 } from '@server/interfaces/api/requestInterfaces';
+import {
+  ParentalRestrictionError,
+  filterMedia,
+  isTitleAllowed,
+} from '@server/lib/parental';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -280,7 +285,7 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
           results: requestCount,
           page: Math.ceil(skip / pageSize) + 1,
         },
-        results: mappedRequests,
+        results: await filterMedia(req.user, mappedRequests, (r) => r.media),
         serviceErrors: {
           radarr: radarrServers
             .filter((s) => !s.profiles)
@@ -333,6 +338,7 @@ requestRoutes.post<never, MediaRequest, MediaRequestBody>(
         case NoSeasonsAvailableError:
           return next({ status: 202, message: error.message });
         case BlocklistedMediaError:
+        case ParentalRestrictionError:
           return next({ status: 403, message: error.message });
         default:
           return next({ status: 500, message: error.message });
@@ -525,6 +531,17 @@ requestRoutes.put<{ requestId: string }>(
         // Reassignment moves every season on the request onto the new owner's
         // quota, so it is charged in full rather than as a delta
         const ownerChanging = requestUser.id !== previousOwnerId;
+
+        if (
+          ownerChanging &&
+          !(await isTitleAllowed(
+            requestUser,
+            request.media.mediaType,
+            request.media.tmdbId
+          ))
+        ) {
+          return next({ status: 403, message: 'This title is not available.' });
+        }
 
         return requestLock.dispatch(userKey(requestUser.id), async () => {
           if (req.body.mediaType === MediaType.MOVIE) {

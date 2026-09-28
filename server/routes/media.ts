@@ -11,6 +11,7 @@ import type {
   MediaResultsResponse,
   MediaWatchDataResponse,
 } from '@server/interfaces/api/mediaInterfaces';
+import { filterMedia } from '@server/lib/parental';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -88,7 +89,7 @@ mediaRoutes.get('/', async (req, res, next) => {
         results: mediaCount,
         page: Math.ceil(skip / pageSize) + 1,
       },
-      results: media,
+      results: await filterMedia(req.user, media, (m) => m),
     } as MediaResultsResponse);
   } catch (e) {
     next({ status: 500, message: e.message });
