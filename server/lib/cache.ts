@@ -10,7 +10,8 @@ export type AvailableCacheIds =
   | 'github'
   | 'plextv'
   | 'plexwatchlist'
-  | 'tvdb';
+  | 'tvdb'
+  | 'parental';
 
 const DEFAULT_TTL = 300;
 
@@ -47,6 +48,9 @@ const PLEX_WATCHLIST_MAX_KEYS = 500;
 // Several keys per show, holding the largest payloads of any tier as the extended
 // series lookup carries every episode.
 const TVDB_MAX_KEYS = 500;
+
+// One small {country: certifications} map per title a restricted user has seen.
+const PARENTAL_MAX_KEYS = 20000;
 
 export interface CacheStats {
   hits: number;
@@ -249,6 +253,10 @@ class CacheManager {
     tvdb: new Cache('tvdb', 'The TVDB API', {
       stdTtl: 21600,
       max: TVDB_MAX_KEYS,
+    }),
+    parental: new Cache('parental', 'Parental Controls Ratings', {
+      stdTtl: 86400,
+      max: PARENTAL_MAX_KEYS,
     }),
   };
 
