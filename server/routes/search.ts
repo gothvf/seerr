@@ -1,6 +1,7 @@
 import TheMovieDb from '@server/api/themoviedb';
 import type { TmdbSearchMultiResponse } from '@server/api/themoviedb/interfaces';
 import Media from '@server/entity/Media';
+import { filterTitles, parentalPage } from '@server/lib/parental';
 import { findSearchProvider } from '@server/lib/search';
 import logger from '@server/logger';
 import { mapSearchResults } from '@server/models/Search';
@@ -23,14 +24,18 @@ searchRoutes.get('/', async (req, res, next) => {
         language: (req.query.language as string) ?? req.locale,
         query: queryString,
       });
+      // One lookup page, not paged: filter it, do not refill it
+      results.results = await filterTitles(req.user, results.results);
     } else {
       const tmdb = new TheMovieDb();
 
-      results = await tmdb.searchMulti({
-        query: queryString,
-        page: Number(req.query.page),
-        language: (req.query.language as string) ?? req.locale,
-      });
+      results = await parentalPage(req.user, Number(req.query.page), (p) =>
+        tmdb.searchMulti({
+          query: queryString,
+          page: p,
+          language: (req.query.language as string) ?? req.locale,
+        })
+      );
     }
 
     const media = await Media.getRelatedMedia(

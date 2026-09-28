@@ -1,6 +1,8 @@
 import TheMovieDb from '@server/api/themoviedb';
 import type {
+  TmdbMovieDetails,
   TmdbMovieReleaseResult,
+  TmdbTvDetails,
   TmdbTvRatingResult,
 } from '@server/api/themoviedb/interfaces';
 import { getRepository } from '@server/datasource';
@@ -140,3 +142,48 @@ export async function loginAs(app: Express, email: string) {
     settings.main.localLogin = prior;
   }
 }
+
+// Every field mapMovieDetails / mapTvDetails reads, empty
+export const fakeMovieDetails = (id: number): TmdbMovieDetails =>
+  ({
+    id,
+    adult: false,
+    title: `Movie ${id}`,
+    original_title: `Movie ${id}`,
+    overview: 'Overview',
+    genres: [],
+    credits: { cast: [], crew: [] },
+    videos: { results: [] },
+    release_dates: { results: [] },
+    keywords: { keywords: [] },
+    production_companies: [],
+    production_countries: [],
+    spoken_languages: [],
+    external_ids: {},
+    original_language: 'en',
+  }) as unknown as TmdbMovieDetails;
+
+export const fakeTvDetails = (id: number): TmdbTvDetails =>
+  ({
+    id,
+    name: `Show ${id}`,
+    original_name: `Show ${id}`,
+    overview: 'Overview',
+    aggregate_credits: { cast: [] },
+    credits: { crew: [] },
+    content_ratings: { results: [] },
+    created_by: [],
+    episode_run_time: [],
+    genres: [],
+    keywords: { results: [] },
+    languages: [],
+    networks: [],
+    origin_country: [],
+    production_companies: [],
+    production_countries: [],
+    seasons: [],
+    spoken_languages: [],
+    videos: { results: [] },
+    external_ids: {},
+    original_language: 'en',
+  }) as unknown as TmdbTvDetails;
