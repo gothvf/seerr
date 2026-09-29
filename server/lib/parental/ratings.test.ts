@@ -74,6 +74,13 @@ describe('getRatings', () => {
     assert.equal(calls, 1);
   });
 
+  it('keeps a rating for a week', async () => {
+    await getRatings(MediaType.MOVIE, 1);
+    const expires = cacheManager.getCache('parental').data.getTtl('movie:1');
+    const day = 24 * 60 * 60 * 1000;
+    assert.ok(expires && expires - Date.now() > 6.9 * day, String(expires));
+  });
+
   it('throws on a TMDB failure and does not cache it', async () => {
     await assert.rejects(getRatings(MediaType.MOVIE, 500), /TMDB down/);
     await assert.rejects(getRatings(MediaType.MOVIE, 500), /TMDB down/);

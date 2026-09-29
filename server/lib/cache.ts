@@ -49,7 +49,8 @@ const PLEX_WATCHLIST_MAX_KEYS = 500;
 // series lookup carries every episode.
 const TVDB_MAX_KEYS = 500;
 
-// One small {country: certifications} map per title a restricted user has seen.
+// One small {country: certifications} map per title a restricted user has seen, kept a
+// week as ratings rarely change (a warm-up job refills the home rows' titles).
 const PARENTAL_MAX_KEYS = 20000;
 
 export interface CacheStats {
@@ -255,7 +256,7 @@ class CacheManager {
       max: TVDB_MAX_KEYS,
     }),
     parental: new Cache('parental', 'Parental Controls Ratings', {
-      stdTtl: 86400,
+      stdTtl: 604800,
       max: PARENTAL_MAX_KEYS,
     }),
   };

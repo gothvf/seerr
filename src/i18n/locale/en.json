@@ -984,6 +984,7 @@
   "components.Settings.SettingsJobsCache.jobtype": "Type",
   "components.Settings.SettingsJobsCache.misses": "Misses",
   "components.Settings.SettingsJobsCache.nextexecution": "Next Execution",
+  "components.Settings.SettingsJobsCache.parental-ratings-warmup": "Parental Ratings Warm-Up",
   "components.Settings.SettingsJobsCache.plex-full-scan": "Plex Full Library Scan",
   "components.Settings.SettingsJobsCache.plex-recently-added-scan": "Plex Recently Added Scan",
   "components.Settings.SettingsJobsCache.plex-refresh-token": "Plex Refresh Token",

@@ -12,6 +12,8 @@ export class ParentalRestrictionError extends Error {}
 const SOURCE_PAGES_PER_PAGE = 2;
 const MAX_READ_AHEAD = 5;
 const PAGE_SIZE = 20;
+/** The most source pages a restricted user's first page reads. */
+export const FIRST_PAGE_SOURCES = SOURCE_PAGES_PER_PAGE + MAX_READ_AHEAD;
 // TMDB serves pages 1 to 500 only, whatever total_pages says.
 const TMDB_LAST_PAGE = 500;
 

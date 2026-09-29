@@ -22,7 +22,7 @@ Opening a blocked title (its page, seasons, ratings, Sonarr lookup), requesting 
 | Part | Files |
 | --- | --- |
 | Age tables and the resolution rule | `server/lib/parental/ages.ts` |
-| TMDB certification lookup, 24 h cache (`parental`, shown as "Parental Controls Ratings" in Jobs & Cache) | `server/lib/parental/ratings.ts`, `server/lib/cache.ts`, `getMovieReleaseDates` / `getTvContentRatings` in `server/api/themoviedb/index.ts` |
+| TMDB certification lookup, 7 day cache (`parental`, shown as "Parental Controls Ratings" in Jobs & Cache) | `server/lib/parental/ratings.ts`, `server/lib/cache.ts`, `getMovieReleaseDates` / `getTvContentRatings` in `server/api/themoviedb/index.ts` |
 | The filter every route calls: `isTitleAllowed`, `assertTitleAllowed`, `filterTitles`, `filterMedia`, `parentalPage` | `server/lib/parental/index.ts` |
 | Profile entity, link from `UserSettings` (`onDelete: RESTRICT`), migrations | `server/entity/ParentalProfile.ts`, `server/entity/UserSettings.ts`, `server/migration/{sqlite,postgres}/*-AddParentalProfiles.ts` |
 | Country list setting (`parental.countries`) | `server/lib/settings/index.ts` |
@@ -31,6 +31,7 @@ Opening a blocked title (its page, seasons, ratings, Sonarr lookup), requesting 
 | Refused actions | `server/entity/MediaRequest.ts`, `server/entity/Watchlist.ts`, `server/routes/request.ts` (reassign), `server/lib/watchlistsync.ts` |
 | Web UI: Settings, Parental Controls; the profile dropdown in a user's General settings | `src/components/Settings/SettingsParental/`, `src/pages/settings/parental.tsx`, `src/components/UserProfile/UserSettings/UserGeneralSettings/index.tsx` |
 | Web UI paging (a short page is not the end of the list) | `src/utils/discoverPaging.ts`, `src/hooks/useDiscover.ts` |
+| Warm-up job ("Parental Ratings Warm-Up"): at startup and every 12 h, looks up the titles on the home rows' first pages | `server/lib/parental/warm.ts`, `server/job/schedule.ts`, `parental-ratings-warmup` in `server/lib/settings/index.ts` |
 | User docs | `docs/using-seerr/settings/parental-controls.md` |
 | Fork image build | `.github/workflows/build-image.yml` |
 
@@ -38,7 +39,7 @@ Creating, editing and deleting profiles, and setting the country list, need Admi
 
 ### Paging for restricted users
 
-TMDB returns 20 titles a page, and a profile can hide most of them. For a restricted user, Seerr page N reads TMDB pages 2N-1 and 2N, then up to 5 more while it has fewer than 20 titles, and reports half of TMDB's page count (TMDB serves 500 pages at most). Unrestricted users get TMDB's page untouched, with one TMDB call. The first uncached restricted page takes a few seconds; the ratings cache makes later ones fast.
+TMDB returns 20 titles a page, and a profile can hide most of them. For a restricted user, Seerr page N reads TMDB pages 2N-1 and 2N, then up to 5 more while it has fewer than 20 titles, and reports half of TMDB's page count (TMDB serves 500 pages at most). Unrestricted users get TMDB's page untouched, with one TMDB call. Each title needs one TMDB lookup, and TMDB allows about 40 requests a second, so an uncached restricted page takes a few seconds. Ratings stay cached a week, and the warm-up job keeps the home rows' titles cached, so those load fast; recommendations, deep pages and searches for new titles are slow the first time.
 
 ### Tests
 

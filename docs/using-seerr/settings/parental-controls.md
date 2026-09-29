@@ -27,5 +27,5 @@ Open a user's settings, General, and pick their Parental Profile. Only users wit
 ## Limits
 
 - Filtering happens on the server, so every app using the Seerr API gets it.
-- The first time a restricted user opens a page, Seerr looks up each title's ratings; later views use a 24 hour cache (Settings, Jobs & Cache, "Parental Controls Ratings").
+- Seerr looks up each title's ratings on TMDB the first time a restricted user meets it, and keeps them a week (Settings, Jobs & Cache, "Parental Controls Ratings"). The "Parental Ratings Warm-Up" job looks up the home rows' titles at startup and every 12 hours, so those rows load fast; other pages can take a few seconds the first time.
 - The sign-in page background images are not filtered.
