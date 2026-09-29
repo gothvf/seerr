@@ -164,51 +164,50 @@ const demo = () => loginAs(app, 'demo@seerr.dev');
 const ids = (results: { id: number }[]) => results.map((r) => r.id);
 
 describe('titles for a restricted user', () => {
-  it('blocked movie details answer like an unknown title', async () => {
+  const REFUSED = { status: 403, message: 'This title is not available.' };
+
+  it('refuses blocked movie details with 403', async () => {
     await restrictUser('demo@seerr.dev', 10);
     const agent = await demo();
-    const unknown = await agent.get(`/movie/${UNKNOWN}`);
     const blocked = await agent.get('/movie/2');
-    assert.equal(blocked.status, unknown.status);
-    assert.deepEqual(blocked.body, unknown.body);
+    assert.equal(blocked.status, 403);
+    assert.deepEqual(blocked.body, REFUSED);
     assert.equal((await agent.get('/movie/1')).status, 200);
+    assert.equal((await agent.get(`/movie/${UNKNOWN}`)).status, 500);
   });
 
-  it('blocked series details and seasons answer like an unknown title', async () => {
+  it('refuses blocked series details and seasons with 403', async () => {
     await restrictUser('demo@seerr.dev', 10);
     const agent = await demo();
-    const unknown = await agent.get(`/tv/${UNKNOWN}`);
-    const blocked = await agent.get('/tv/2');
-    assert.equal(blocked.status, unknown.status);
-    assert.deepEqual(blocked.body, unknown.body);
-    assert.equal((await agent.get('/tv/2/season/1')).status, 500);
+    for (const path of ['/tv/2', '/tv/2/season/1']) {
+      const res = await agent.get(path);
+      assert.equal(res.status, 403, path);
+      assert.deepEqual(res.body, REFUSED, path);
+    }
   });
 
-  it('detail lookup failure answers like an unknown title', async () => {
+  it('refuses a title whose rating lookup fails', async () => {
     await restrictUser('demo@seerr.dev', 10);
     failingTitles.add('movie:3');
-    const agent = await demo();
-    const unknown = await agent.get(`/movie/${UNKNOWN}`);
-    const failed = await agent.get('/movie/3');
-    assert.deepEqual(failed.body, unknown.body);
+    const res = await (await demo()).get('/movie/3');
+    assert.equal(res.status, 403);
   });
 
-  it('ratings and the Sonarr lookup fail like an unknown title', async () => {
+  it('refuses ratings and the Sonarr lookup of a blocked title', async () => {
     await restrictUser('demo@seerr.dev', 10);
     getSettings().sonarr = [
       { id: 0, name: 'Sonarr', hostname: 'localhost', port: 8989, apiKey: 'k' },
     ] as SonarrSettings[];
     const agent = await demo();
-    for (const [blocked, unknown] of [
-      ['/movie/2/ratings', `/movie/${UNKNOWN}/ratings`],
-      ['/movie/2/ratingscombined', `/movie/${UNKNOWN}/ratingscombined`],
-      ['/tv/2/ratings', `/tv/${UNKNOWN}/ratings`],
-      ['/service/sonarr/lookup/2', `/service/sonarr/lookup/${UNKNOWN}`],
+    for (const path of [
+      '/movie/2/ratings',
+      '/movie/2/ratingscombined',
+      '/tv/2/ratings',
+      '/service/sonarr/lookup/2',
     ]) {
-      const a = await agent.get(blocked);
-      const b = await agent.get(unknown);
-      assert.equal(a.status, b.status, blocked);
-      assert.deepEqual(a.body, b.body, blocked);
+      const res = await agent.get(path);
+      assert.equal(res.status, 403, path);
+      assert.deepEqual(res.body, REFUSED, path);
     }
     getSettings().sonarr = [];
   });

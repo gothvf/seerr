@@ -15,7 +15,7 @@ A title's age comes from TMDB certifications:
 - A title no listed country rates is unrated: hidden unless the profile allows unrated titles.
 - If the rating lookup fails, the title is hidden (fail closed).
 
-A blocked title's detail routes fail exactly like an unknown TMDB id. Requesting a blocked title, adding it to a watchlist, or reassigning a request to a restricted user answers 403.
+Opening a blocked title (its page, seasons, ratings, Sonarr lookup), requesting it, adding it to a watchlist, or reassigning its request to a restricted user answers 403 "This title is not available." So does a title whose rating lookup failed.
 
 ### Where the code is
 

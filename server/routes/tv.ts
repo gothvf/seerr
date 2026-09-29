@@ -7,7 +7,11 @@ import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { Watchlist } from '@server/entity/Watchlist';
-import { assertTitleAllowed, parentalPage } from '@server/lib/parental';
+import {
+  ParentalRestrictionError,
+  assertTitleAllowed,
+  parentalPage,
+} from '@server/lib/parental';
 import logger from '@server/logger';
 import { mapTvResult } from '@server/models/Search';
 import { mapSeasonWithEpisodes, mapTvDetails } from '@server/models/Tv';
@@ -56,6 +60,9 @@ tvRoutes.get('/:id', async (req, res, next) => {
 
     return res.status(200).json(data);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving series', {
       label: 'API',
       errorMessage: e.message,
@@ -89,6 +96,9 @@ tvRoutes.get('/:id/season/:seasonNumber', async (req, res, next) => {
 
     return res.status(200).json(mapSeasonWithEpisodes(season));
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving season', {
       label: 'API',
       errorMessage: e.message,
@@ -228,6 +238,9 @@ tvRoutes.get('/:id/ratings', async (req, res, next) => {
 
     return res.status(200).json(rtratings);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving series ratings', {
       label: 'API',
       errorMessage: e.message,
