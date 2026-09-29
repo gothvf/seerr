@@ -4,6 +4,7 @@ import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { User } from '@server/entity/User';
 import type { WatchlistItem } from '@server/interfaces/api/discoverInterfaces';
+import { assertTitleAllowed } from '@server/lib/parental';
 import logger from '@server/logger';
 import { DbAwareColumn, resolveDbType } from '@server/utils/DbColumnHelper';
 import {
@@ -91,6 +92,13 @@ export class Watchlist implements WatchlistItem {
       watchlistRequest.mediaType === MediaType.MOVIE
         ? await tmdb.getMovie({ movieId: watchlistRequest.tmdbId })
         : await tmdb.getTvShow({ tvId: watchlistRequest.tmdbId });
+
+    await assertTitleAllowed(
+      user,
+      watchlistRequest.mediaType,
+      watchlistRequest.tmdbId,
+      'adult' in tmdbMedia ? tmdbMedia.adult : undefined
+    );
 
     const existing = await watchlistRepository
       .createQueryBuilder('watchlist')

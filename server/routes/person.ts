@@ -1,5 +1,6 @@
 import TheMovieDb from '@server/api/themoviedb';
 import Media from '@server/entity/Media';
+import { filterTitles } from '@server/lib/parental';
 import logger from '@server/logger';
 import {
   mapCastCredits,
@@ -40,6 +41,8 @@ personRoutes.get('/:id/combined_credits', async (req, res, next) => {
       personId: Number(req.params.id),
       language: (req.query.language as string) ?? req.locale,
     });
+    combinedCredits.cast = await filterTitles(req.user, combinedCredits.cast);
+    combinedCredits.crew = await filterTitles(req.user, combinedCredits.crew);
 
     const castMedia = await Media.getRelatedMedia(
       req.user,

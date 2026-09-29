@@ -7,6 +7,11 @@ import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { Watchlist } from '@server/entity/Watchlist';
+import {
+  ParentalRestrictionError,
+  assertTitleAllowed,
+  parentalPage,
+} from '@server/lib/parental';
 import logger from '@server/logger';
 import { mapTvResult } from '@server/models/Search';
 import { mapSeasonWithEpisodes, mapTvDetails } from '@server/models/Tv';
@@ -21,6 +26,7 @@ tvRoutes.get('/:id', async (req, res, next) => {
     const tmdbTv = await tmdb.getTvShow({
       tvId: Number(req.params.id),
     });
+    await assertTitleAllowed(req.user, MediaType.TV, tmdbTv.id);
     const metadataProvider = tmdbTv.keywords.results.some(
       (keyword: TmdbKeyword) => keyword.id === ANIME_KEYWORD_ID
     )
@@ -54,6 +60,9 @@ tvRoutes.get('/:id', async (req, res, next) => {
 
     return res.status(200).json(data);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving series', {
       label: 'API',
       errorMessage: e.message,
@@ -72,6 +81,7 @@ tvRoutes.get('/:id/season/:seasonNumber', async (req, res, next) => {
     const tmdbTv = await tmdb.getTvShow({
       tvId: Number(req.params.id),
     });
+    await assertTitleAllowed(req.user, MediaType.TV, tmdbTv.id);
     const metadataProvider = tmdbTv.keywords.results.some(
       (keyword: TmdbKeyword) => keyword.id === ANIME_KEYWORD_ID
     )
@@ -86,6 +96,9 @@ tvRoutes.get('/:id/season/:seasonNumber', async (req, res, next) => {
 
     return res.status(200).json(mapSeasonWithEpisodes(season));
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving season', {
       label: 'API',
       errorMessage: e.message,
@@ -103,11 +116,17 @@ tvRoutes.get('/:id/recommendations', async (req, res, next) => {
   const tmdb = new TheMovieDb();
 
   try {
-    const results = await tmdb.getTvRecommendations({
-      tvId: Number(req.params.id),
-      page: Number(req.query.page),
-      language: (req.query.language as string) ?? req.locale,
-    });
+    const results = await parentalPage(
+      req.user,
+      Number(req.query.page),
+      (p) =>
+        tmdb.getTvRecommendations({
+          tvId: Number(req.params.id),
+          page: p,
+          language: (req.query.language as string) ?? req.locale,
+        }),
+      MediaType.TV
+    );
 
     const media = await Media.getRelatedMedia(
       req.user,
@@ -148,11 +167,17 @@ tvRoutes.get('/:id/similar', async (req, res, next) => {
   const tmdb = new TheMovieDb();
 
   try {
-    const results = await tmdb.getTvSimilar({
-      tvId: Number(req.params.id),
-      page: Number(req.query.page),
-      language: (req.query.language as string) ?? req.locale,
-    });
+    const results = await parentalPage(
+      req.user,
+      Number(req.query.page),
+      (p) =>
+        tmdb.getTvSimilar({
+          tvId: Number(req.params.id),
+          page: p,
+          language: (req.query.language as string) ?? req.locale,
+        }),
+      MediaType.TV
+    );
 
     const media = await Media.getRelatedMedia(
       req.user,
@@ -197,6 +222,7 @@ tvRoutes.get('/:id/ratings', async (req, res, next) => {
     const tv = await tmdb.getTvShow({
       tvId: Number(req.params.id),
     });
+    await assertTitleAllowed(req.user, MediaType.TV, tv.id);
 
     const rtratings = await rtapi.getTVRatings(
       tv.name,
@@ -212,6 +238,9 @@ tvRoutes.get('/:id/ratings', async (req, res, next) => {
 
     return res.status(200).json(rtratings);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving series ratings', {
       label: 'API',
       errorMessage: e.message,

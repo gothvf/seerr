@@ -17,6 +17,7 @@ import type {
   UserResultsResponse,
   UserWatchDataResponse,
 } from '@server/interfaces/api/userInterfaces';
+import { filterMedia } from '@server/lib/parental';
 import { Permission, hasPermission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -493,7 +494,7 @@ router.get<{ id: string }, UserRequestsResponse>(
           results: requestCount,
           page: Math.ceil(skip / pageSize) + 1,
         },
-        results: requests,
+        results: await filterMedia(req.user, requests, (r) => r.media),
       });
     } catch (e) {
       next({ status: 500, message: e.message });
@@ -915,7 +916,7 @@ router.get<{ id: string }, UserWatchDataResponse>(
       );
 
       return res.status(200).json({
-        recentlyWatched,
+        recentlyWatched: await filterMedia(req.user, recentlyWatched, (m) => m),
         playCount: watchStats.total_plays,
       });
     } catch (e) {
@@ -974,7 +975,7 @@ router.get<{ id: string }, WatchlistResponse>(
           page: page,
           totalPages: Math.ceil(total / itemsPerPage),
           totalResults: total,
-          results: result,
+          results: await filterMedia(req.user, result, (w) => w),
         });
       }
     }
@@ -997,13 +998,17 @@ router.get<{ id: string }, WatchlistResponse>(
       page,
       totalPages: Math.ceil(watchlist.totalSize / itemsPerPage),
       totalResults: watchlist.totalSize,
-      results: watchlist.items.map((item) => ({
-        id: item.tmdbId,
-        ratingKey: item.ratingKey,
-        title: item.title,
-        mediaType: item.type === 'show' ? 'tv' : 'movie',
-        tmdbId: item.tmdbId,
-      })),
+      results: await filterMedia(
+        req.user,
+        watchlist.items.map((item) => ({
+          id: item.tmdbId,
+          ratingKey: item.ratingKey,
+          title: item.title,
+          mediaType: item.type === 'show' ? MediaType.TV : MediaType.MOVIE,
+          tmdbId: item.tmdbId,
+        })),
+        (item) => item
+      ),
     });
   }
 );

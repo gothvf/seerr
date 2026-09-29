@@ -1,10 +1,15 @@
 import RadarrAPI from '@server/api/servarr/radarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
 import TheMovieDb from '@server/api/themoviedb';
+import { MediaType } from '@server/constants/media';
 import type {
   ServiceCommonServer,
   ServiceCommonServerWithDetails,
 } from '@server/interfaces/api/serviceInterfaces';
+import {
+  ParentalRestrictionError,
+  assertTitleAllowed,
+} from '@server/lib/parental';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { Router } from 'express';
@@ -195,11 +200,15 @@ serviceRoutes.get<{ tmdbId: string }>(
         tvId: Number(req.params.tmdbId),
         language: 'en',
       });
+      await assertTitleAllowed(req.user, MediaType.TV, tv.id);
 
       const response = await sonarr.getSeriesByTitle(tv.name);
 
       return res.status(200).json(response);
     } catch (e) {
+      if (e instanceof ParentalRestrictionError) {
+        return next({ status: 403, message: e.message });
+      }
       logger.error('Failed to fetch tvdb search results', {
         label: 'Media Request',
         message: e.message,

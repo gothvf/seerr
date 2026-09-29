@@ -8,6 +8,7 @@ import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
 import { User } from '@server/entity/User';
+import type { ParentalSettingsResponse } from '@server/interfaces/api/parentalInterfaces';
 import type { PlexConnection } from '@server/interfaces/api/plexInterfaces';
 import type {
   LogMessage,
@@ -18,6 +19,7 @@ import { scheduledJobs } from '@server/job/schedule';
 import type { AvailableCacheIds } from '@server/lib/cache';
 import cacheManager from '@server/lib/cache';
 import ImageProxy from '@server/lib/imageproxy';
+import { SUPPORTED_COUNTRIES } from '@server/lib/parental/ages';
 import { Permission } from '@server/lib/permissions';
 import { jellyfinFullScanner } from '@server/lib/scanners/jellyfin';
 import { plexFullScanner } from '@server/lib/scanners/plex';
@@ -86,6 +88,35 @@ settingsRoutes.post('/main', async (req, res) => {
   await settings.save();
 
   return res.status(200).json(settings.main);
+});
+
+const parentalSettingsBody = z.object({
+  countries: z
+    .array(z.string().refine((c) => SUPPORTED_COUNTRIES.includes(c)))
+    .min(1)
+    .refine((c) => new Set(c).size === c.length),
+});
+
+const parentalSettingsResponse = (): ParentalSettingsResponse => ({
+  countries: getSettings().parental.countries,
+  supportedCountries: SUPPORTED_COUNTRIES,
+});
+
+settingsRoutes.get('/parental', (_req, res) => {
+  res.status(200).json(parentalSettingsResponse());
+});
+
+settingsRoutes.post('/parental', async (req, res, next) => {
+  const body = parentalSettingsBody.safeParse(req.body);
+  if (!body.success) {
+    return next({ status: 400, message: 'Invalid country list.' });
+  }
+
+  const settings = getSettings();
+  settings.parental = { countries: body.data.countries };
+  await settings.save();
+
+  return res.status(200).json(parentalSettingsResponse());
 });
 
 settingsRoutes.get('/network', (req, res) => {

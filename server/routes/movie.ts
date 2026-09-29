@@ -6,6 +6,11 @@ import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { Watchlist } from '@server/entity/Watchlist';
+import {
+  ParentalRestrictionError,
+  assertTitleAllowed,
+  parentalPage,
+} from '@server/lib/parental';
 import logger from '@server/logger';
 import { mapMovieDetails } from '@server/models/Movie';
 import { mapMovieResult } from '@server/models/Search';
@@ -21,6 +26,13 @@ movieRoutes.get('/:id', async (req, res, next) => {
       movieId: Number(req.params.id),
       language: (req.query.language as string) ?? req.locale,
     });
+    // Inside the try: the catch turns a blocked title into a 403
+    await assertTitleAllowed(
+      req.user,
+      MediaType.MOVIE,
+      tmdbMovie.id,
+      tmdbMovie.adult
+    );
 
     const media = await Media.getMedia(tmdbMovie.id, MediaType.MOVIE);
 
@@ -48,6 +60,9 @@ movieRoutes.get('/:id', async (req, res, next) => {
 
     return res.status(200).json(data);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving movie', {
       label: 'API',
       errorMessage: e.message,
@@ -64,11 +79,17 @@ movieRoutes.get('/:id/recommendations', async (req, res, next) => {
   const tmdb = new TheMovieDb();
 
   try {
-    const results = await tmdb.getMovieRecommendations({
-      movieId: Number(req.params.id),
-      page: Number(req.query.page),
-      language: (req.query.language as string) ?? req.locale,
-    });
+    const results = await parentalPage(
+      req.user,
+      Number(req.query.page),
+      (p) =>
+        tmdb.getMovieRecommendations({
+          movieId: Number(req.params.id),
+          page: p,
+          language: (req.query.language as string) ?? req.locale,
+        }),
+      MediaType.MOVIE
+    );
 
     const media = await Media.getRelatedMedia(
       req.user,
@@ -110,11 +131,17 @@ movieRoutes.get('/:id/similar', async (req, res, next) => {
   const tmdb = new TheMovieDb();
 
   try {
-    const results = await tmdb.getMovieSimilar({
-      movieId: Number(req.params.id),
-      page: Number(req.query.page),
-      language: (req.query.language as string) ?? req.locale,
-    });
+    const results = await parentalPage(
+      req.user,
+      Number(req.query.page),
+      (p) =>
+        tmdb.getMovieSimilar({
+          movieId: Number(req.params.id),
+          page: p,
+          language: (req.query.language as string) ?? req.locale,
+        }),
+      MediaType.MOVIE
+    );
 
     const media = await Media.getRelatedMedia(
       req.user,
@@ -163,6 +190,7 @@ movieRoutes.get('/:id/ratings', async (req, res, next) => {
     const movie = await tmdb.getMovie({
       movieId: Number(req.params.id),
     });
+    await assertTitleAllowed(req.user, MediaType.MOVIE, movie.id, movie.adult);
 
     const rtratings = await rtapi.getMovieRatings(
       movie.title,
@@ -178,6 +206,9 @@ movieRoutes.get('/:id/ratings', async (req, res, next) => {
 
     return res.status(200).json(rtratings);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving movie ratings', {
       label: 'API',
       errorMessage: e.message,
@@ -202,6 +233,7 @@ movieRoutes.get('/:id/ratingscombined', async (req, res, next) => {
     const movie = await tmdb.getMovie({
       movieId: Number(req.params.id),
     });
+    await assertTitleAllowed(req.user, MediaType.MOVIE, movie.id, movie.adult);
 
     const rtratings = await rtapi.getMovieRatings(
       movie.title,
@@ -227,6 +259,9 @@ movieRoutes.get('/:id/ratingscombined', async (req, res, next) => {
 
     return res.status(200).json(ratings);
   } catch (e) {
+    if (e instanceof ParentalRestrictionError) {
+      return next({ status: 403, message: e.message });
+    }
     logger.debug('Something went wrong retrieving movie ratings', {
       label: 'API',
       errorMessage: e.message,

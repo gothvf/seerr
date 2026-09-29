@@ -14,6 +14,7 @@ import type {
   TmdbKeywordSearchResponse,
   TmdbLanguage,
   TmdbMovieDetails,
+  TmdbMovieReleaseResult,
   TmdbNetwork,
   TmdbPersonCombinedCredits,
   TmdbPersonDetails,
@@ -24,6 +25,7 @@ import type {
   TmdbSearchTvResponse,
   TmdbSeasonWithEpisodes,
   TmdbTvDetails,
+  TmdbTvRatingResult,
   TmdbTvScanDetails,
   TmdbUpcomingMoviesResponse,
   TmdbWatchProviderDetails,
@@ -477,6 +479,45 @@ class TheMovieDb extends ExternalAPI implements TvShowProvider {
       throw new Error(`[TMDB] Failed to fetch TV show details: ${e.message}`, {
         cause: e,
       });
+    }
+  };
+
+  // ttl 0: server/lib/parental/ratings.ts caches a reduced copy instead
+  public getMovieReleaseDates = async ({
+    movieId,
+  }: {
+    movieId: number;
+  }): Promise<TmdbMovieReleaseResult> => {
+    try {
+      return await this.get<TmdbMovieReleaseResult>(
+        `/movie/${movieId}/release_dates`,
+        {},
+        0
+      );
+    } catch (e) {
+      throw new Error(
+        `[TMDB] Failed to fetch movie release dates: ${e.message}`,
+        { cause: e }
+      );
+    }
+  };
+
+  public getTvContentRatings = async ({
+    tvId,
+  }: {
+    tvId: number;
+  }): Promise<TmdbTvRatingResult> => {
+    try {
+      return await this.get<TmdbTvRatingResult>(
+        `/tv/${tvId}/content_ratings`,
+        {},
+        0
+      );
+    } catch (e) {
+      throw new Error(
+        `[TMDB] Failed to fetch TV content ratings: ${e.message}`,
+        { cause: e }
+      );
     }
   };
 

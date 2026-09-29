@@ -4,6 +4,7 @@ import dataSource, { getRepository } from '@server/datasource';
 import { Blocklist } from '@server/entity/Blocklist';
 import Media from '@server/entity/Media';
 import type { BlocklistResultsResponse } from '@server/interfaces/api/blocklistInterfaces';
+import { filterMedia } from '@server/lib/parental';
 import { Permission } from '@server/lib/permissions';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
@@ -70,7 +71,7 @@ blocklistRoutes.get(
           results: itemsCount,
           page: Math.ceil(skip / take) + 1,
         },
-        results: blocklistedItems,
+        results: await filterMedia(req.user, blocklistedItems, (b) => b),
       } as BlocklistResultsResponse);
     } catch (error) {
       logger.error('Something went wrong while retrieving blocklisted items', {

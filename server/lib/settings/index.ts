@@ -129,6 +129,11 @@ export interface ProxySettings {
   bypassLocalAddresses: boolean;
 }
 
+export interface ParentalSettings {
+  // ISO 3166-1 codes in priority order; see server/lib/parental/ages.ts
+  countries: string[];
+}
+
 export interface MainSettings {
   apiKey: string;
   applicationTitle: string;
@@ -372,7 +377,8 @@ export type JobId =
   | 'jellyfin-full-scan'
   | 'image-cache-cleanup'
   | 'availability-sync'
-  | 'process-blocklisted-tags';
+  | 'process-blocklisted-tags'
+  | 'parental-ratings-warmup';
 
 export interface AllSettings {
   clientId: string;
@@ -390,6 +396,7 @@ export interface AllSettings {
   jobs: Record<JobId, JobSettings>;
   network: NetworkSettings;
   metadataSettings: MetadataSettings;
+  parental: ParentalSettings;
   migrations: string[];
 }
 
@@ -614,6 +621,9 @@ class Settings {
         'process-blocklisted-tags': {
           schedule: '0 30 1 */7 * *',
         },
+        'parental-ratings-warmup': {
+          schedule: '0 15 */12 * * *',
+        },
       },
       network: {
         csrfProtection: false,
@@ -635,6 +645,9 @@ class Settings {
           forceMaxTtl: -1,
         },
         apiRequestTimeout: 10000,
+      },
+      parental: {
+        countries: ['US'],
       },
       migrations: [],
     };
@@ -770,6 +783,14 @@ class Settings {
 
   set network(data: NetworkSettings) {
     this.data.network = mergeSettings(this.data.network, data);
+  }
+
+  get parental(): ParentalSettings {
+    return this.data.parental;
+  }
+
+  set parental(data: ParentalSettings) {
+    this.data.parental = mergeSettings(this.data.parental, data);
   }
 
   get migrations(): string[] {

@@ -3,6 +3,7 @@ import blocklistedTagsProcessor from '@server/job/blocklistedTagsProcessor';
 import availabilitySync from '@server/lib/availabilitySync';
 import downloadTracker from '@server/lib/downloadtracker';
 import ImageProxy from '@server/lib/imageproxy';
+import { isWarmingRatings, warmRatings } from '@server/lib/parental/warm';
 import refreshToken from '@server/lib/refreshToken';
 import {
   jellyfinFullScanner,
@@ -258,6 +259,24 @@ export const startJobs = (): void => {
     running: () => blocklistedTagsProcessor.status().running,
     cancelFn: () => blocklistedTagsProcessor.cancel(),
   });
+
+  // Look up the ratings restricted users' home rows need, so they load from the cache
+  scheduledJobs.push({
+    id: 'parental-ratings-warmup',
+    name: 'Parental Ratings Warm-Up',
+    type: 'process',
+    interval: 'hours',
+    cronSchedule: jobs['parental-ratings-warmup'].schedule,
+    job: schedule.scheduleJob(jobs['parental-ratings-warmup'].schedule, () => {
+      logger.info('Starting scheduled job: Parental Ratings Warm-Up', {
+        label: 'Jobs',
+      });
+      warmRatings();
+    }),
+    running: isWarmingRatings,
+  });
+  // The ratings cache lives in memory: refill it after a restart
+  warmRatings();
 
   logger.info('Scheduled jobs loaded', { label: 'Jobs' });
 };
